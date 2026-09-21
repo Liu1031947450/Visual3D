@@ -7,3 +7,4 @@ dist/
 .vercel/
 # 自动化测试生成的截图、合成模型、校验报告与本地运行日志。
 test-results/
+/.understand-anything
