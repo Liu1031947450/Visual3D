@@ -16,7 +16,7 @@ import { disposeModel } from './eye.js';
  */
 export function validateFiles(files) {
   if (!files.length) throw new Error('请选择模型文件。');
-  if (files.reduce((size, file) => size + file.size, 0) > 50 * 1024 * 1024) throw new Error('文件总大小不能超过 50 MB，请先优化模型与贴图。');
+  if (files.reduce((size, file) => size + file.size, 0) > 100 * 1024 * 1024) throw new Error('文件总大小不能超过 100 MB，请先优化模型与贴图。');
   const roots = files.filter(file => /\.(glb|gltf|obj)$/i.test(file.name));
   if (roots.length !== 1) throw new Error('每次请选择一个 GLB、glTF 或 OBJ 主文件，以及它的配套文件。');
   // 后续按文件名映射附件，故不允许不同目录出现同名资源，否则无法确定该用哪一个。

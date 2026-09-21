@@ -23,14 +23,19 @@ assert(asset.buffers.every(buffer => !buffer.uri), 'eye geometry is embedded in 
 
 // 1. validateFiles 只读 name/size，用最小对象代替真实 File；这不验证二进制内容是否正确。
 const file = (name, size = 1024) => ({ name, size });
+const maxImportBytes = 100 * 1024 * 1024;
 assert.equal(validateFiles([file('eye.glb')]).name, 'eye.glb');
+assert.equal(validateFiles([file('eye.glb', 51 * 1024 * 1024)]).name, 'eye.glb');
+assert.equal(validateFiles([file('eye.glb', maxImportBytes)]).name, 'eye.glb');
 assert.equal(validateFiles([file('eye.gltf'), file('eye.bin'), file('iris.png')]).name, 'eye.gltf');
+assert.equal(validateFiles([file('eye.gltf'), file('eye.bin', maxImportBytes - 2048), file('iris.png')]).name, 'eye.gltf');
 assert.equal(validateFiles([file('EYE.OBJ'), file('eye.mtl')]).name, 'EYE.OBJ');
 // 2. 验证空列表、未知格式、多个主文件、超过体积上限和同名附件都被拒绝。
 assert.throws(() => validateFiles([]), /请选择/);
 assert.throws(() => validateFiles([file('eye.fbx')]), /主文件/);
 assert.throws(() => validateFiles([file('first.glb'), file('second.obj')]), /主文件/);
-assert.throws(() => validateFiles([file('eye.glb', 51 * 1024 * 1024)]), /50 MB/);
+assert.throws(() => validateFiles([file('eye.glb', maxImportBytes + 1)]), /100 MB/);
+assert.throws(() => validateFiles([file('eye.gltf'), file('eye.bin', maxImportBytes - 2048), file('iris.png', 1025)]), /100 MB/);
 assert.throws(() => validateFiles([file('eye.gltf'), file('iris.png'), file('iris.png')]), /重名/);
 // 3. 图层、几何和信息靠 id 关联；当前九个结构应有九个不同 id。
 assert.equal(new Set(anatomy.map(entry => entry.id)).size, 9);
