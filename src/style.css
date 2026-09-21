@@ -1,0 +1,2235 @@
+/*
+ * 页面样式入口，由 main.js 导入；只控制 HTML/Canvas 布局，不改变 Three.js 的材质或几何。
+ * 阅读顺序：基础样式 -> 顶栏/工作区 -> 工具与图层 -> 信息/剖切 -> 文档弹窗 -> 响应式 -> 末尾覆盖。
+ * 同一选择器在末尾可能有布局修正，调试时以浏览器 Computed 样式和最终生效规则为准。
+ * 字体来自外部服务，加载失败会使用系统字体；眼球纹理本身由本地 Canvas 生成。
+ */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;450;500;550;600;650;700&family=Noto+Sans+SC:wght@400;450;500;550;600;650;700&display=swap');
+
+/* 1. 全局字体与主题变量。--green 等供 CSS 复用，三维颜色仍需到 eye.js/viewer.js 调整。 */
+:root {
+  font-family: 'DM Sans','Noto Sans SC',sans-serif;
+  color: #263831;
+  background: #f8faf8;
+  font-synthesis: none;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+  --green: #287a63;
+  --muted: #8b9690;
+  --line: #e3e9e4;
+  --white: #fff;
+  --soft: #edf4ef;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+button,input,select,a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,input,select {
+  font: inherit;
+}
+
+button,a,input {
+  outline-offset: 4px;
+}
+
+button {
+  cursor: pointer;
+  color: inherit;
+}
+
+button {
+  border: 0;
+  background: none;
+}
+
+button:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+}
+
+button:focus-visible,a:focus-visible,input:focus-visible {
+  outline: 2px solid var(--green);
+}
+
+button,nav a {
+  transition: background .16s,color .16s,box-shadow .16s;
+}
+
+button:hover {
+  color: var(--green);
+}
+
+svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  vertical-align: middle;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button svg {
+  pointer-events: none;
+}
+
+/* JS 设置 element.hidden 时必须真正隐藏，即使组件本来使用 flex/grid 也不能露出。 */
+[hidden] {
+  display: none!important;
+}
+
+/* 2. 顶栏、导航和标题区域。active/disabled 状态由 main.js 的事件同步。 */
+.site-header {
+  height: 78px;
+  padding: 0 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 26px;
+  background: white;
+  border-bottom: 1px solid var(--line);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 214px;
+  font-weight: 700;
+  font-size: 22px;
+}
+
+.brand-mark {
+  width: 37px;
+  height: 37px;
+  background: #e9f1ed;
+  border: 1px solid #dce8df;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: #367e66;
+}
+
+.brand-mark svg {
+  width: 25px;
+  height: 25px;
+}
+
+.brand-sub {
+  font-size: 11px;
+  font-weight: 450;
+  color: #8c978f;
+  display: inline-block;
+  margin-left: 12px;
+  border-left: 1px solid #dce3dd;
+  padding-left: 12px;
+}
+
+.site-header nav {
+  display: flex;
+  align-self: stretch;
+  gap: 31px;
+}
+
+.nav-item {
+  position: relative;
+  padding: 0 3px;
+  color: #7c8680;
+  font-size: 12px;
+}
+
+.nav-item.active {
+  font-weight: 600;
+  color: #34775e;
+}
+
+.nav-item.active:after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 10%;
+  right: 10%;
+  height: 3px;
+  background: #34775e;
+  border-radius: 3px 3px 0 0;
+}
+
+.header-end {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.version {
+  color: #9aa59e;
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: white;
+  padding: 10px 14px;
+  border: 1px solid #dce4dd;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  min-height: 38px;
+}
+
+.button:hover {
+  background: #eff5f0;
+  border-color: #bccfc2;
+}
+
+.import-button svg {
+  width: 15px;
+}
+
+.page-heading {
+  height: 111px;
+  padding: 25px 36px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.eyebrow {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  color: #7f978b;
+  font-size: 9px;
+  font-weight: 650;
+  margin-bottom: 11px;
+}
+
+.eyebrow span {
+  width: 5px;
+  height: 5px;
+  background: #80a58c;
+  border-radius: 50%;
+}
+
+h1 {
+  font-size: 24px;
+  margin: 0;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.title-divider {
+  font-size: 23px;
+  font-weight: 400;
+  margin: 0 13px;
+  color: #b7c2b9;
+}
+
+.title-secondary {
+  font-size: 15px;
+  color: #929c95;
+  font-weight: 400;
+}
+
+.heading-meta {
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 8px;
+  color: #99a39c;
+  font-size: 10px;
+}
+
+.model-badge {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #657b6d;
+  font-size: 11px;
+}
+
+.model-badge svg {
+  width: 14px;
+  height: 14px;
+}
+
+.model-badge span {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * 3. 桌面工作区为“弹性三维区 + 固定侧栏”；minmax(0,1fr)/min-width:0 允许内容收缩。
+ * .scene 的实际高度是 WebGL Canvas 可用空间的来源，EyeViewer.resize() 会据此设置绘图尺寸。
+ */
+.workspace {
+  margin: 0 28px;
+  display: grid;
+  grid-template-columns: minmax(0,1fr) 316px;
+  border: 1px solid #dce4dd;
+  background: white;
+  min-height: 670px;
+  height: calc(100dvh - 246px);
+}
+
+.viewer-column {
+  min-width: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.scene {
+  position: relative;
+  isolation: isolate;
+  flex: 1;
+  min-height: 620px;
+  overflow: hidden;
+  background: #eff3f0;
+}
+
+/* Canvas 铺满容器，HTML 工具叠在上方；touch-action:none 把画布触摸交给 OrbitControls。 */
+.scene>canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  display: block;
+  z-index: -1;
+}
+
+.scene-top {
+  position: absolute;
+  top: 19px;
+  left: 21px;
+  right: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.scene-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  color: #68796e;
+  white-space: nowrap;
+}
+
+.live-dot,.status-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  display: inline-block;
+  background: #71a086;
+}
+
+.scene-kind {
+  color: #8f9c92;
+  padding-left: 7px;
+  margin-left: 4px;
+  border-left: 1px solid #cdd8cf;
+}
+
+/* 4. 模式分段按钮与通用工具按钮。固定图标尺寸，避免换成播放/暂停后布局跳动。 */
+.segmented {
+  display: flex;
+  background: #e2e9e3c9;
+  padding: 4px;
+  border-radius: 7px;
+  gap: 2px;
+  box-shadow: 0 1px 1px #fff6;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.segmented button {
+  padding: 8px 11px;
+  border-radius: 4px;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #78897c;
+}
+
+.segmented button svg {
+  height: 14px;
+  width: 14px;
+}
+
+.segmented button.active {
+  background: #fff;
+  color: #39765f;
+  box-shadow: 0 1px 5px #344d3910;
+  font-weight: 550;
+}
+
+.icon-button {
+  height: 34px;
+  width: 34px;
+  border-radius: 4px;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  position: relative;
+  padding: 0;
+}
+
+.icon-button svg {
+  height: 16px;
+  width: 16px;
+}
+
+.icon-button:hover {
+  background: #e3ede5;
+}
+
+.icon-button[aria-pressed=true] {
+  color: #33795f;
+  background: #e4eee6;
+}
+
+/* 悬浮提示直接读取按钮的 data-tooltip，无需额外 JS 定位器。 */
+.icon-button[data-tooltip]:hover:after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  background: #334b3b;
+  color: white;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 10px;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.left-tools {
+  position: absolute;
+  top: 88px;
+  left: 19px;
+}
+
+.vertical-tools {
+  display: flex;
+  flex-direction: column;
+  background: #fff9;
+  border: 1px solid #d8e2dba8;
+  padding: 4px;
+  border-radius: 6px;
+  gap: 4px;
+}
+
+.vertical-tools .tool-divider {
+  height: 1px;
+  width: 22px;
+  margin: 3px auto;
+  background: #e0e7e1;
+}
+
+.vertical-tools .icon-button:hover:after {
+  left: calc(100% + 8px);
+  top: 7px;
+  transform: none;
+}
+
+/* 5. 图层面板由 renderLayers() 填充；selected 表示选中，is-hidden 表示三维对象已隐藏。 */
+.layers-panel {
+  position: absolute;
+  left: 22px;
+  top: 337px;
+  width: 145px;
+}
+
+.panel-title {
+  font-size: 10px;
+  color: #798f7e;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.panel-title>span {
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  color: #94a697;
+}
+
+.layer-row {
+  display: flex;
+  height: 29px;
+  align-items: center;
+  border-radius: 3px;
+  gap: 2px;
+}
+
+.layer-name {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 11px;
+  color: #758578;
+  flex: 1;
+  padding: 5px 7px;
+  text-align: left;
+  border-radius: 4px;
+}
+
+.layer-name>span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.layer-name.selected {
+  color: #34785f;
+  background: #dce9de;
+  font-weight: 550;
+}
+
+.layer-swatch {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  flex: none;
+  border: 1px solid #51654510;
+}
+
+.layer-visibility {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  margin: 0 2px;
+  cursor: pointer;
+  border: 1px solid #b6c8ba;
+  border-radius: 50%;
+  position: relative;
+  flex: none;
+}
+
+.layer-visibility:checked {
+  border-color: #85a28c;
+}
+
+.layer-visibility:checked:after {
+  content: '';
+  width: 4px;
+  height: 4px;
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  border-radius: 50%;
+  background: #779980;
+}
+
+.is-hidden .layer-name {
+  opacity: .4;
+}
+
+.show-all {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-top: 1px solid #d9e2da;
+  margin-top: 10px;
+  padding: 11px 5px 4px;
+  width: 100%;
+  font-size: 10px;
+  color: #8b9b8e;
+}
+
+.show-all svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* 6. 标签避让后的位置和连线参数由 Viewer 写入；点仍指向真实三维锚点，连线不拦截拖动。 */
+.hotspot {
+  position: absolute;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  width: 64px;
+  height: 28px;
+  z-index: 1;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.hotspot:focus-visible {
+  z-index: 2;
+}
+
+.hotspot-point {
+  position: absolute;
+  left: var(--anchor-x);
+  top: var(--anchor-y);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #71917d;
+  box-shadow: 0 0 0 3px #fff8;
+  flex: none;
+}
+
+.hotspot-line {
+  position: absolute;
+  left: var(--line-start);
+  top: 50%;
+  width: var(--line-length);
+  height: 1px;
+  transform: rotate(var(--line-angle));
+  transform-origin: left center;
+  pointer-events: none;
+  background: #93a997a1;
+}
+
+.hotspot-label {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  background: #f8fbf6ed;
+  border: 1px solid #dce7dcd6;
+  padding: 6px 10px;
+  border-radius: 3px;
+  color: #5e7464;
+  box-shadow: 0 2px 7px #233b2205;
+}
+
+.hotspot.selected .hotspot-label {
+  background: #fff;
+  color: #29795c;
+  border-color: #c1d7c6;
+}
+
+.hotspot.selected .hotspot-point {
+  background: #317e5e;
+}
+
+.scene-note {
+  position: absolute;
+  left: 22px;
+  bottom: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: #94a395;
+  font-size: 9px;
+  pointer-events: none;
+}
+
+.note-index {
+  font-family: 'DM Sans',sans-serif;
+  color: #7b907e;
+  font-size: 10px;
+}
+
+/* 7. 底部相机/截图工具与坐标轴。它们不是模型组成部分，不会进入导出的模型 PNG。 */
+.bottom-tools {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: #fcfefbf0;
+  padding: 5px 8px;
+  border: 1px solid #dce5dc;
+  border-radius: 7px;
+  box-shadow: 0 4px 15px #334f3310;
+  white-space: nowrap;
+}
+
+.zoom-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.zoom-tools>span {
+  width: 37px;
+  text-align: center;
+  font-size: 10px;
+  color: #657b6a;
+  font-variant-numeric: tabular-nums;
+}
+
+.tool-divider {
+  height: 16px;
+  width: 1px;
+  background: #dfe7df;
+  margin: 0 5px;
+}
+
+.view-button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 6px;
+  font-size: 10px;
+  color: #627869;
+}
+
+.view-button svg {
+  width: 15px;
+  height: 15px;
+}
+
+.orientation {
+  position: absolute;
+  bottom: 23px;
+  right: 20px;
+  width: 68px;
+  height: 68px;
+  opacity: .8;
+}
+
+.axis {
+  position: absolute;
+  font-size: 9px;
+}
+
+.orientation .axis-y {
+  top: 1px;
+  left: 31px;
+  color: #709c7c;
+}
+
+.orientation .axis-y:after {
+  content: '';
+  position: absolute;
+  background: #709c7c;
+  width: 1px;
+  height: 25px;
+  top: 12px;
+  left: 3px;
+}
+
+.orientation .axis-x {
+  top: 43px;
+  right: 0;
+  color: #c08b76;
+}
+
+.orientation .axis-x:after {
+  content: '';
+  position: absolute;
+  background: #c08b76;
+  width: 30px;
+  height: 1px;
+  top: -4px;
+  right: 7px;
+  transform: rotate(24deg);
+}
+
+.orientation .axis-z {
+  top: 48px;
+  left: 4px;
+  color: #7295ae;
+}
+
+.orientation .axis-z:after {
+  content: '';
+  position: absolute;
+  background: #7295ae;
+  width: 29px;
+  height: 1px;
+  top: -7px;
+  left: 5px;
+  transform: rotate(-35deg);
+}
+
+.axis-origin {
+  position: absolute;
+  left: 32px;
+  top: 35px;
+  width: 5px;
+  height: 5px;
+  background: #e1e8df;
+  border: 1px solid #91a18f;
+  border-radius: 50%;
+}
+
+/* 8. 状态栏的文字来自 onStats 回调；CSS 只排列 FPS/面数，不计算性能。 */
+.viewer-status {
+  height: 34px;
+  flex: none;
+  border-top: 1px solid #dee6df;
+  background: #f6f9f5;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 16px;
+  font-size: 9px;
+  color: #8f9e90;
+  gap: 10px;
+}
+
+.viewer-status>div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-divider {
+  height: 8px;
+  width: 1px;
+  background: #d5dfd6;
+  margin: 0 2px;
+}
+
+.coordinate-label {
+  font-size: 8px;
+  color: #9ba79c;
+}
+
+.coordinate-label>span {
+  margin: 0 5px;
+}
+
+/* 9. 右侧信息区独立滚动，避免内容增多时挤压场景；小屏断点改成模型下方的页面内容。 */
+.inspector {
+  border-left: 1px solid var(--line);
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #d8e3da transparent;
+  display: flex;
+  flex-direction: column;
+  background: white;
+}
+
+.inspector-heading {
+  padding: 18px 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #edf0ed;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.inspector-heading>span:first-child {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.inspector-heading svg {
+  width: 14px;
+  height: 14px;
+  color: #779280;
+}
+
+.selected-count {
+  font-size: 9px;
+  color: #9ba99e;
+  font-weight: 400;
+}
+
+.structure-info {
+  padding: 22px 22px 17px;
+}
+
+.structure-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.structure-title h2 {
+  font-size: 25px;
+  line-height: 1.35;
+  margin: 0 0 4px;
+  font-weight: 550;
+}
+
+.structure-title p {
+  margin: 0;
+  color: #9ba59f;
+  font-size: 12px;
+}
+
+.structure-swatch {
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  background: #db9675;
+  box-shadow: inset -6px -4px 12px #76322a15,inset 4px 3px 10px #fff4;
+}
+
+.category {
+  display: inline-block;
+  font-size: 9px;
+  color: #789382;
+  background: #eff5f0;
+  padding: 4px 7px;
+  border-radius: 3px;
+  margin-top: 15px;
+}
+
+.description {
+  font-size: 11px;
+  line-height: 1.95;
+  color: #78867c;
+  margin: 12px 0 15px;
+  min-height: 65px;
+}
+
+.diagram {
+  margin: 0 0 17px;
+  background: #f2f5f3;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+/* 此处控制二维示意图的显示尺寸；content.js 中 640×380 是绘图缓冲尺寸，两者用途不同。 */
+.diagram canvas {
+  display: block;
+  width: 100%;
+  height: 124px;
+  object-fit: contain;
+}
+
+.diagram figcaption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 11px;
+  border-top: 1px solid #e7ede8;
+  color: #92a096;
+  font-size: 9px;
+}
+
+.diagram figcaption>span:last-child {
+  font-size: 7px;
+}
+
+.part-facts {
+  margin: 0;
+}
+
+.part-facts>div {
+  display: grid;
+  grid-template-columns: 51px 1fr;
+  gap: 10px;
+  margin: 10px 0;
+  font-size: 10px;
+  line-height: 1.8;
+}
+
+.part-facts dt {
+  color: #9aa69d;
+  white-space: nowrap;
+}
+
+.part-facts dd {
+  margin: 0;
+  color: #6e8073;
+}
+
+.text-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  color: #43806a;
+  font-size: 10px;
+  margin-top: 13px;
+}
+
+.text-button svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* 10. 剖切设置：原生 checkbox/range 承担交互，CSS 把它们显示成开关与滑块。 */
+.clipping-panel {
+  padding: 16px 22px 22px;
+  border-top: 1px solid var(--line);
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.section-heading h3 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.section-heading h3 svg {
+  width: 14px;
+  height: 14px;
+  color: #7e9685;
+}
+
+.icon-button.small {
+  width: 25px;
+  height: 25px;
+}
+
+.icon-button.small svg {
+  width: 12px;
+  height: 12px;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 10px;
+  color: #718075;
+}
+
+.toggle-row label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+}
+
+.mini-tag {
+  font-size: 7px;
+  color: #a4b0a6;
+}
+
+.switch {
+  appearance: none;
+  width: 27px;
+  height: 15px;
+  border-radius: 15px;
+  flex: none;
+  background: #d9e2dc;
+  position: relative;
+  cursor: pointer;
+  margin: 0;
+}
+
+.switch:checked {
+  background: #45866c;
+}
+
+.switch:before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 11px;
+  height: 11px;
+  background: white;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px #23432a20;
+  transition: transform .15s;
+}
+
+.switch:checked:before {
+  transform: translateX(12px);
+}
+
+.axis-sliders {
+  margin: 16px 0;
+}
+
+.axis-control {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin: 12px 0;
+  height: 17px;
+}
+
+.axis-checkbox {
+  position: relative;
+  cursor: pointer;
+  flex: none;
+}
+
+/* 视觉上隐藏原生框但保留可聚焦/可点击输入；紧邻的 span 负责绘制轴名状态。 */
+.axis-checkbox input {
+  position: absolute;
+  opacity: 0;
+  width: 19px;
+  height: 19px;
+  left: 0;
+  top: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.axis-checkbox span {
+  display: grid;
+  place-items: center;
+  border-radius: 3px;
+  width: 19px;
+  height: 19px;
+  font-size: 9px;
+  border: 1px solid transparent;
+}
+
+.axis-checkbox input:focus-visible+span {
+  outline: 2px solid #3a8669;
+}
+
+.axis-checkbox input:not(:checked)+span {
+  background: #f1f3f1;
+  color: #b9c1ba;
+}
+
+.axis-checkbox.axis-x span {
+  background: #f5e9e4;
+  color: #b47c6b;
+}
+
+.axis-checkbox.axis-y span {
+  background: #e7f0e9;
+  color: #7e9e83;
+}
+
+.axis-checkbox.axis-z span {
+  background: #e8eef5;
+  color: #8098b3;
+}
+
+input[type=range] {
+  accent-color: #4d856a;
+  cursor: pointer;
+  height: 3px;
+  min-width: 0;
+  width: 100%;
+  margin: 0;
+}
+
+input[type=range]::-webkit-slider-thumb {
+  width: 10px;
+  height: 10px;
+}
+
+output {
+  font-variant-numeric: tabular-nums;
+}
+
+.axis-control output {
+  font-size: 9px;
+  color: #8b9c8e;
+  min-width: 30px;
+  text-align: right;
+}
+
+.toggle-row.subtle {
+  font-size: 10px;
+  margin-bottom: 20px;
+}
+
+.opacity-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #829185;
+  margin-bottom: 12px;
+}
+
+.opacity-row output {
+  font-size: 9px;
+}
+
+.opacity-slider {
+  display: block;
+}
+
+.inactive {
+  opacity: .4;
+}
+
+/* 11. 文档入口与页脚；data-link 只是打开文档的按钮，不负责加载 Markdown。 */
+.data-link {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  border-top: 1px solid var(--line);
+  padding: 17px 20px;
+  text-align: left;
+  min-height: 74px;
+}
+
+.document-icon {
+  width: 32px;
+  height: 36px;
+  background: #eff5ef;
+  border-radius: 5px;
+  display: grid;
+  place-items: center;
+  color: #91a990;
+}
+
+.document-icon svg {
+  width: 17px;
+}
+
+.data-link strong {
+  display: block;
+  font-size: 10px;
+  font-weight: 500;
+  margin-bottom: 5px;
+}
+
+.data-link small {
+  font-size: 9px;
+  color: #a0ada3;
+}
+
+.data-link>svg {
+  margin-left: auto;
+  width: 14px;
+  color: #819989;
+}
+
+footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 31px;
+  color: #a2ada4;
+  font-size: 9px;
+  line-height: 1.7;
+}
+
+footer>span:first-child {
+  font-size: 9px;
+  color: #86998b;
+}
+
+.footer-separator {
+  margin: 0 10px;
+  color: #bac4bc;
+}
+
+footer>span:last-child {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+footer button {
+  padding: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  color: #81998a;
+}
+
+footer svg {
+  width: 11px;
+  height: 11px;
+}
+
+/* 12. 全屏时放开常规最小高度；浏览器全屏状态由 Fullscreen API 控制，不靠 CSS 模拟。 */
+.viewer-column:fullscreen .scene {
+  min-height: 0;
+}
+
+.viewer-column:fullscreen {
+  background: #eff3f0;
+}
+
+/* 13. 错误覆盖层与 toast。hidden 控制可见性，错误内容由 main.js 写入。 */
+.viewer-error {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: #eff3f0f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  padding: 30px;
+  text-align: center;
+}
+
+.viewer-error h2 {
+  font-size: 22px;
+}
+
+.viewer-error p {
+  max-width: 340px;
+  line-height: 1.8;
+  color: #748779;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  background: #304e3d;
+  color: white;
+  border: 1px solid #53755f;
+  padding: 13px 20px;
+  border-radius: 6px;
+  font-size: 12px;
+  max-width: min(90vw,600px);
+  z-index: 100;
+  box-shadow: 0 6px 30px #253b3220;
+}
+
+.toast.error {
+  background: #754c3e;
+  border-color: #997565;
+}
+
+.animation-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.animation-panel select {
+  padding: 6px;
+  max-width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.heading-meta .text-button {
+  margin: 0;
+  font-size: 9px;
+}
+
+/* 14. 原生 dialog 的显示、遮罩与内部滚动；showModal()/close() 保留浏览器的模态交互机制。 */
+dialog {
+  width: min(860px,calc(100vw - 32px));
+  height: min(840px,calc(100dvh - 64px));
+  padding: 0;
+  border: 1px solid #d9e4dc;
+  border-radius: 8px;
+  color: var(--green);
+  box-shadow: 0 20px 100px #0b241a40;
+  overflow: hidden;
+}
+
+dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+dialog::backdrop {
+  background: #1e382b68;
+  backdrop-filter: blur(4px);
+}
+
+.dialog-top {
+  padding: 17px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+}
+
+.dialog-top>div {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.doc-tabs {
+  display: flex;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--line);
+  gap: 25px;
+}
+
+.doc-tabs button {
+  padding: 15px 0;
+  font-size: 12px;
+  color: #89978c;
+  position: relative;
+}
+
+.doc-tabs button.active {
+  color: #337d61;
+}
+
+.doc-tabs button.active:after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #337d61;
+}
+
+/* Markdown 转成普通 HTML 后在这里排版；表格和代码块内部横向滚动，不能撑宽整个页面。 */
+#document-content {
+  flex: 1;
+  overflow: auto;
+  padding: 24px 34px;
+  color: #5c6e62;
+  font-size: 12px;
+  line-height: 1.95;
+  overflow-wrap: anywhere;
+}
+
+#document-content h1 {
+  font-size: 24px;
+  color: #294d38;
+  margin-bottom: 12px;
+}
+
+#document-content h2 {
+  font-size: 18px;
+  margin-top: 27px;
+  color: #355b44;
+}
+
+#document-content h3 {
+  font-size: 14px;
+  color: #355b44;
+}
+
+#document-content a {
+  color: #278466;
+  text-decoration: underline;
+}
+
+#document-content table {
+  border-collapse: collapse;
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  font-size: 11px;
+}
+
+#document-content th,#document-content td {
+  border: 1px solid #dde7df;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+#document-content th {
+  background: #f1f6f1;
+  font-weight: 500;
+}
+
+#document-content pre {
+  background: #f1f5f1;
+  border-radius: 4px;
+  padding: 15px;
+  overflow: auto;
+  line-height: 1.7;
+}
+
+#document-content code {
+  font-size: 11px;
+  background: #f1f5f1;
+  padding: 2px 3px;
+}
+
+#document-content blockquote {
+  margin: 15px 0;
+  border-left: 3px solid #93b7a0;
+  padding: 4px 16px;
+  background: #f4f8f4;
+}
+
+.dialog-bottom {
+  border-top: 1px solid var(--line);
+  padding: 13px 23px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dialog-bottom>span {
+  font-size: 8px;
+  color: #a3b1a6;
+}
+
+.dialog-bottom .button {
+  font-size: 10px;
+}
+
+.dialog-bottom svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* 15. 宽桌面增加侧栏和留白，不随视口连续放大字号。 */
+@media(min-width:1550px) {
+  .site-header {
+    padding: 0 48px;
+  }
+  .page-heading {
+    padding-left: 48px;
+    padding-right: 48px;
+    height: 122px;
+  }
+  .workspace {
+    margin: 0 40px;
+    grid-template-columns: minmax(0,1fr) 350px;
+    height: calc(100dvh - 264px);
+  }
+  .structure-info {
+    padding: 25px 25px 18px;
+  }
+  .description {
+    font-size: 12px;
+    line-height: 2;
+  }
+  .diagram canvas {
+    height: 148px;
+  }
+  .inspector-heading,.clipping-panel {
+    padding-left: 25px;
+    padding-right: 25px;
+  }
+  .part-facts>div {
+    font-size: 11px;
+  }
+  .scene {
+    min-height: 660px;
+  }
+  .layers-panel {
+    top: 350px;
+    width: 157px;
+  }
+  .layer-row {
+    height: 32px;
+  }
+  .layer-name {
+    font-size: 12px;
+  }
+  footer {
+    padding-left: 43px;
+    padding-right: 43px;
+  }
+}
+
+/* 16. 中等宽度减少工具栏文本与留白，保留模型/信息双栏。 */
+@media(max-width:1150px) {
+  .site-header {
+    padding: 0 22px;
+    gap: 15px;
+  }
+  .brand {
+    min-width: 180px;
+  }
+  .brand-sub {
+    margin-left: 9px;
+    padding-left: 9px;
+  }
+  .site-header nav {
+    gap: 20px;
+  }
+  .version {
+    display: none;
+  }
+  .page-heading {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+  .workspace {
+    margin: 0 18px;
+    grid-template-columns: minmax(0,1fr) 292px;
+  }
+  .scene-title .scene-kind {
+    display: none;
+  }
+  .scene-title {
+    font-size: 9px;
+  }
+  .segmented button {
+    padding: 8px;
+    font-size: 10px;
+    gap: 4px;
+  }
+  .segmented button svg {
+    display: none;
+  }
+  .layers-panel {
+    width: 113px;
+    left: 19px;
+  }
+  .hotspot-label {
+    font-size: 10px;
+    padding: 5px 7px;
+  }
+  .bottom-tools {
+    gap: 2px;
+    bottom: 26px;
+  }
+  .view-button span {
+    display: none;
+  }
+  .scene-note {
+    bottom: 88px;
+  }
+  .orientation {
+    right: 12px;
+    bottom: 22px;
+  }
+  .structure-info {
+    padding-left: 19px;
+    padding-right: 19px;
+  }
+  .inspector-heading,.clipping-panel {
+    padding-left: 19px;
+    padding-right: 19px;
+  }
+  .coordinate-label {
+    display: none;
+  }
+  .title-secondary {
+    font-size: 13px;
+  }
+  footer {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+  .data-link {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+}
+
+/* 17. 平板改为上下布局：模型在前，信息与剖切区在后，避免三维窗口被压得太窄。 */
+@media(max-width:860px) {
+  .brand-sub {
+    display: none;
+  }
+  .brand {
+    min-width: 140px;
+    font-size: 21px;
+  }
+  .site-header nav {
+    gap: 17px;
+  }
+  .nav-item {
+    font-size: 11px;
+  }
+  .header-end {
+    gap: 0;
+  }
+  .site-header {
+    height: 68px;
+  }
+  .page-heading {
+    height: 100px;
+  }
+  .title-secondary,.title-divider {
+    display: none;
+  }
+  .workspace {
+    grid-template-columns: minmax(0,1fr);
+    height: auto;
+    min-height: 0;
+  }
+  .scene {
+    height: 630px;
+    flex: none;
+    min-height: 0;
+  }
+  .inspector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    overflow: visible;
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+  .inspector-heading {
+    grid-column: 1/-1;
+  }
+  .structure-info {
+    grid-row: 2/4;
+  }
+  .clipping-panel {
+    border-top: 0;
+    border-left: 1px solid var(--line);
+    padding-top: 24px;
+  }
+  .data-link {
+    border-left: 1px solid var(--line);
+    margin-top: 0;
+    align-self: end;
+  }
+  .diagram canvas {
+    height: 144px;
+  }
+  .layers-panel {
+    width: 133px;
+    top: 277px;
+  }
+  .scene-top {
+    top: 17px;
+  }
+  .left-tools {
+    top: 78px;
+  }
+  .layer-row {
+    height: 27px;
+  }
+  .scene-note {
+    bottom: 24px;
+  }
+  .bottom-tools {
+    bottom: 19px;
+  }
+  .description {
+    min-height: 0;
+  }
+  footer>span:last-child {
+    align-items: flex-end;
+    flex-direction: column;
+    gap: 6px;
+  }
+  footer {
+    padding-top: 16px;
+    padding-bottom: 18px;
+  }
+  .hotspot-label {
+    font-size: 11px;
+  }
+  .coordinate-label {
+    display: block;
+  }
+}
+
+/* 18. 手机使用固定场景高度、精简顶栏和单列侧栏；图层面板由按钮与 hidden 属性控制。 */
+@media(max-width:560px) {
+  .site-header {
+    height: 62px;
+    padding: 0 16px;
+    gap: 10px;
+  }
+  .brand {
+    font-size: 19px;
+    min-width: 0;
+    gap: 7px;
+  }
+  .brand-mark {
+    width: 31px;
+    height: 31px;
+  }
+  .brand-mark svg {
+    width: 22px;
+    height: 22px;
+  }
+  .site-header nav {
+    margin-left: auto;
+    gap: 12px;
+  }
+  .site-header nav .nav-item {
+    font-size: 10px;
+  }
+  .site-header nav .nav-item[data-doc=collaboration] {
+    display: none;
+  }
+  .nav-item.active {
+    display: none;
+  }
+  .header-end .button {
+    width: 32px;
+    min-height: 32px;
+    padding: 7px;
+  }
+  .header-end .button span {
+    display: none;
+  }
+  .page-heading {
+    height: 94px;
+    padding: 20px 17px;
+    gap: 10px;
+  }
+  h1 {
+    font-size: 22px;
+  }
+  .eyebrow {
+    font-size: 8px;
+    margin-bottom: 8px;
+  }
+  .heading-meta {
+    font-size: 8px;
+    gap: 5px;
+  }
+  .model-badge {
+    font-size: 9px;
+    gap: 4px;
+  }
+  .model-badge span {
+    max-width: 116px;
+  }
+  .model-badge svg {
+    width: 12px;
+  }
+  .workspace {
+    margin: 0 10px;
+  }
+  .scene {
+    height: 528px;
+  }
+  .scene-top {
+    left: 13px;
+    right: 9px;
+    top: 14px;
+  }
+  .scene-title {
+    display: none;
+  }
+  .segmented {
+    left: 0;
+    transform: none;
+    padding: 3px;
+    position: relative;
+  }
+  .segmented button {
+    font-size: 10px;
+    padding: 8px 10px;
+  }
+  .scene-top>.icon-button {
+    width: 29px;
+    height: 29px;
+  }
+  .left-tools {
+    top: 71px;
+    left: 12px;
+  }
+  .vertical-tools {
+    padding: 3px;
+    gap: 2px;
+  }
+  .vertical-tools .icon-button {
+    width: 29px;
+    height: 29px;
+  }
+  .layers-panel {
+    left: 14px;
+    top: 292px;
+    width: 110px;
+  }
+  .panel-title {
+    margin-bottom: 7px;
+    font-size: 9px;
+  }
+  .layer-row {
+    height: 22px;
+  }
+  .layer-name {
+    font-size: 9px;
+    padding: 3px 5px;
+    gap: 6px;
+  }
+  .layer-swatch {
+    width: 5px;
+    height: 5px;
+  }
+  .layer-visibility {
+    width: 10px;
+    height: 10px;
+  }
+  .layer-visibility:checked:after {
+    width: 3px;
+    height: 3px;
+    left: 2.5px;
+    top: 2.5px;
+  }
+  .show-all {
+    display: none;
+  }
+  .layers-panel {
+    display: none;
+  }
+  .layers-panel:not([hidden]) {
+    display: block;
+    background: #f7faf3f2;
+    padding: 10px;
+    border: 1px solid #dce5d9;
+    border-radius: 5px;
+    width: 132px;
+    top: 270px;
+  }
+  .scene-note {
+    left: 15px;
+    bottom: 79px;
+    font-size: 8px;
+  }
+  .note-index {
+    font-size: 9px;
+  }
+  .bottom-tools {
+    left: 14px;
+    right: auto;
+    bottom: 18px;
+    transform: none;
+    gap: 3px;
+    padding: 4px;
+  }
+  .bottom-tools .tool-divider {
+    margin: 0 3px;
+  }
+  .bottom-tools .icon-button {
+    width: 30px;
+    height: 30px;
+  }
+  .zoom-tools {
+    gap: 0;
+  }
+  .zoom-tools>span {
+    width: 36px;
+  }
+  .orientation {
+    bottom: 19px;
+    right: 9px;
+    width: 53px;
+    height: 58px;
+    transform: scale(.8);
+    transform-origin: bottom right;
+  }
+  .viewer-status {
+    height: 30px;
+    font-size: 8px;
+    padding: 0 11px;
+  }
+  .viewer-status>div {
+    gap: 6px;
+  }
+  .coordinate-label {
+    display: none;
+  }
+  .hotspot {
+    width: 56px;
+  }
+  .hotspot-label {
+    font-size: 9px;
+    padding: 5px 7px;
+  }
+  .hotspot-point {
+    width: 5px;
+    height: 5px;
+  }
+  .inspector {
+    grid-template-columns: 1fr;
+  }
+  .inspector-heading {
+    padding: 17px 20px;
+  }
+  .structure-info {
+    grid-row: auto;
+    padding: 20px;
+  }
+  .structure-title h2 {
+    font-size: 25px;
+  }
+  .description {
+    font-size: 12px;
+    line-height: 1.9;
+    margin-bottom: 17px;
+  }
+  .diagram canvas {
+    height: 163px;
+  }
+  .part-facts>div {
+    font-size: 11px;
+    grid-template-columns: 56px 1fr;
+  }
+  .text-button {
+    font-size: 11px;
+  }
+  .category {
+    font-size: 10px;
+  }
+  .clipping-panel {
+    padding: 19px 20px 25px;
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+  .section-heading h3 {
+    font-size: 12px;
+  }
+  .toggle-row,.opacity-row,.toggle-row.subtle {
+    font-size: 11px;
+  }
+  .axis-control {
+    margin: 17px 0;
+  }
+  .data-link {
+    border-left: 0;
+    padding: 18px 20px;
+  }
+  .data-link strong {
+    font-size: 12px;
+  }
+  .data-link small {
+    font-size: 10px;
+  }
+  footer {
+    flex-direction: column;
+    gap: 9px;
+    padding: 17px 16px;
+    font-size: 8px;
+  }
+  footer>span:last-child {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 8px;
+    gap: 8px;
+  }
+  footer button {
+    font-size: 8px;
+    white-space: nowrap;
+  }
+  .dialog-top {
+    padding: 12px 16px;
+  }
+  .doc-tabs {
+    padding: 0 16px;
+    gap: 19px;
+  }
+  .doc-tabs button {
+    font-size: 10px;
+  }
+  #document-content {
+    padding: 17px 20px;
+  }
+  #document-content h1 {
+    font-size: 21px;
+  }
+  .dialog-bottom {
+    padding: 12px 16px;
+  }
+  .dialog-bottom>span {
+    display: none;
+  }
+  .dialog-bottom .button {
+    margin-left: auto;
+  }
+  .toast {
+    font-size: 11px;
+    width: max-content;
+    max-width: 90vw;
+    bottom: 18px;
+  }
+}
+
+/*
+ * 19. 下列是现有布局的最终修正：移动角标、压缩信息区、增加详情折叠后的样式。
+ * 保留原有级联顺序，前面的同名规则并非都最终生效；本次只补注释和整理格式。
+ */
+.scene-note {
+  top: 55px;
+  bottom: auto;
+  flex-direction: row;
+  gap: 8px;
+}
+
+.layers-panel {
+  top: 307px;
+}
+
+.layer-row {
+  height: 26px;
+}
+
+.structure-info {
+  padding-top: 18px;
+  padding-bottom: 14px;
+}
+
+.diagram canvas {
+  height: 112px;
+}
+
+.description {
+  min-height: 0;
+  margin-bottom: 12px;
+}
+
+.diagram {
+  margin-bottom: 10px;
+}
+
+.part-details summary {
+  font-size: 10px;
+  color: #879a8b;
+  cursor: pointer;
+  line-height: 2;
+}
+
+.part-details[open] {
+  margin-bottom: 5px;
+}
+
+.structure-info .text-button {
+  margin-top: 8px;
+}
+
+.clipping-panel {
+  padding-top: 12px;
+  padding-bottom: 18px;
+}
+
+.section-heading {
+  margin-bottom: 10px;
+}
+
+@media(min-width:1550px) {
+  .layers-panel {
+    top: 326px;
+  }
+  .layer-row {
+    height: 28px;
+  }
+  .diagram canvas {
+    height: 124px;
+  }
+  .description {
+    font-size: 11px;
+    line-height: 1.95;
+  }
+}
+
+@media(max-width:860px) {
+  .layers-panel {
+    top: 285px;
+  }
+  .layer-row {
+    height: 27px;
+  }
+  .diagram canvas {
+    height: 144px;
+  }
+  .clipping-panel {
+    padding-top: 24px;
+  }
+  .scene-note {
+    top: 57px;
+  }
+}
+
+@media(max-width:560px) {
+  .layers-panel {
+    top: 267px;
+  }
+  .layer-row {
+    height: 22px;
+  }
+  .scene-note {
+    top: auto;
+    bottom: 78px;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .diagram canvas {
+    height: 163px;
+  }
+  .description {
+    font-size: 12px;
+  }
+  .part-details summary {
+    font-size: 11px;
+  }
+  .clipping-panel {
+    padding-top: 19px;
+  }
+  .structure-info {
+    padding: 20px;
+  }
+  .scene:has(.layers-panel:not([hidden])) .scene-note {
+    display: none;
+  }
+}
+
+/* 20. 坐标轴的实际位置/线长/角度由 updateAnnotations 写入，覆盖前面的静态初始示意。 */
+.orientation .axis {
+  right: auto;
+}
+
+.orientation .axis:after {
+  left: 3px;
+  top: 5px;
+  right: auto;
+  width: var(--axis-length);
+  height: 1px;
+  background: currentColor;
+  transform-origin: left center;
+  transform: rotate(var(--axis-angle));
+}
+
+/* 导入模型可能有很多网格，用面板内部滚动容纳，而不是让图层覆盖底部工具。 */
+.layers-panel {
+  max-height: calc(100% - 325px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #c4d4c7 transparent;
+}
+
+@media(min-width:1550px) {
+  .layers-panel {
+    max-height: calc(100% - 344px);
+  }
+}
+
+@media(max-width:860px) {
+  .layers-panel {
+    max-height: calc(100% - 302px);
+  }
+}
+
+@media(max-width:560px) {
+  .layers-panel {
+    max-height: calc(100% - 338px);
+  }
+}
+
+/* 21. 尊重减少动态效果的系统偏好，取消 CSS 过渡；这条规则不控制用户主动启动的三维动画。 */
+@media(prefers-reduced-motion:reduce) {
+  *,*:before,*:after {
+    transition: none!important;
+    scroll-behavior: auto!important;
+  }
+}

@@ -1,0 +1,18 @@
+<!doctype html>
+<!-- 入口文档：浏览器先解析这里，再执行下方 ES Module；实际界面由 src/main.js 生成。 -->
+<html lang="zh-CN">
+  <head>
+    <!-- UTF-8 保留中文；viewport 让移动端使用设备宽度，配合 style.css 的响应式断点。 -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f4f6f5" />
+    <meta name="description" content="OCULUS 交互式眼球解剖图谱，探索眼球结构与多平面剖切。" />
+    <title>OCULUS · 眼球解剖图谱</title>
+  </head>
+  <body>
+    <!-- 页面挂载点，必须与 main.js 中 document.querySelector('#app') 对应。 -->
+    <div id="app"></div>
+    <!-- module 支持 import/export，脚本在文档解析后执行；请通过 Vite 服务访问，不要直接双击 HTML。 -->
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
