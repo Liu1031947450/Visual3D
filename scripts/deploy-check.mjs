@@ -19,9 +19,13 @@ try {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await mkdir('test-results', { recursive: true });
+  const eyeResponse = page.waitForResponse(response => new URL(response.url()).pathname.endsWith('/models/eye.glb'));
   const response = await page.goto(url);
   assert.equal(response.status(), 200, 'site must load');
   const homepage = new URL(url);
+  const eyeAsset = await eyeResponse;
+  assert.equal(eyeAsset.status(), 200, 'eye GLB must load');
+  assert.equal(new URL(eyeAsset.url()).pathname, `${homepage.pathname}models/eye.glb`, 'model URL preserves deployment prefix');
   assert.equal(new URL(await page.locator('.brand').getAttribute('href'), homepage).pathname, homepage.pathname, 'home link preserves deployment prefix');
 
   for (const [name, width, height] of [['desktop', 1440, 1000], ['mobile', 390, 844]]) {

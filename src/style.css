@@ -30,6 +30,20 @@ body {
   margin: 0;
 }
 
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  min-height: 600px;
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
 button,input,select,a {
   -webkit-tap-highlight-color: transparent;
 }
@@ -92,8 +106,9 @@ button svg {
 
 /* 2. 顶栏、导航和标题区域。active/disabled 状态由 main.js 的事件同步。 */
 .site-header {
-  height: 78px;
-  padding: 0 36px;
+  height: 56px;
+  padding: 0 20px;
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -108,12 +123,12 @@ button svg {
   gap: 10px;
   min-width: 214px;
   font-weight: 700;
-  font-size: 22px;
+  font-size: 20px;
 }
 
 .brand-mark {
-  width: 37px;
-  height: 37px;
+  width: 32px;
+  height: 32px;
   background: #e9f1ed;
   border: 1px solid #dce8df;
   border-radius: 50%;
@@ -202,8 +217,9 @@ button svg {
 }
 
 .page-heading {
-  height: 111px;
-  padding: 25px 36px 24px;
+  min-height: 44px;
+  padding: 8px 20px;
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -211,7 +227,7 @@ button svg {
 }
 
 .eyebrow {
-  display: flex;
+  display: none;
   gap: 6px;
   align-items: center;
   color: #7f978b;
@@ -228,30 +244,23 @@ button svg {
 }
 
 h1 {
-  font-size: 24px;
+  font-size: 16px;
   margin: 0;
   font-weight: 600;
   line-height: 1.3;
 }
 
-.title-divider {
-  font-size: 23px;
-  font-weight: 400;
-  margin: 0 13px;
-  color: #b7c2b9;
-}
-
-.title-secondary {
-  font-size: 15px;
-  color: #929c95;
-  font-weight: 400;
+.title-divider,.title-secondary {
+  display: none;
 }
 
 .heading-meta {
   display: flex;
-  align-items: flex-end;
-  flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  min-width: 0;
+  gap: 6px 12px;
   color: #99a39c;
   font-size: 10px;
 }
@@ -281,17 +290,21 @@ h1 {
  * .scene 的实际高度是 WebGL Canvas 可用空间的来源，EyeViewer.resize() 会据此设置绘图尺寸。
  */
 .workspace {
-  margin: 0 28px;
+  margin: 0 12px;
   display: grid;
-  grid-template-columns: minmax(0,1fr) 316px;
+  grid-template-columns: minmax(0,1fr) 280px;
+  grid-template-rows: minmax(0,1fr);
   border: 1px solid #dce4dd;
+  border-radius: 8px;
+  overflow: hidden;
   background: white;
-  min-height: 670px;
-  height: calc(100dvh - 246px);
+  min-height: 0;
+  flex: 1;
 }
 
 .viewer-column {
   min-width: 0;
+  min-height: 0;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -301,7 +314,7 @@ h1 {
   position: relative;
   isolation: isolate;
   flex: 1;
-  min-height: 620px;
+  min-height: 0;
   overflow: hidden;
   background: #eff3f0;
 }
@@ -822,6 +835,7 @@ h1 {
 
 /* 9. 右侧信息区独立滚动，避免内容增多时挤压场景；小屏断点改成模型下方的页面内容。 */
 .inspector {
+  min-height: 0;
   border-left: 1px solid var(--line);
   overflow: auto;
   scrollbar-width: thin;
@@ -829,6 +843,10 @@ h1 {
   display: flex;
   flex-direction: column;
   background: white;
+}
+
+.inspector>* {
+  flex-shrink: 0;
 }
 
 .inspector-heading {
@@ -1227,9 +1245,10 @@ output {
 
 footer {
   display: flex;
+  flex: none;
   justify-content: space-between;
   gap: 20px;
-  padding: 20px 31px;
+  padding: 8px 16px;
   color: #a2ada4;
   font-size: 9px;
   line-height: 1.7;
@@ -1501,18 +1520,8 @@ dialog::backdrop {
 
 /* 15. 宽桌面增加侧栏和留白，不随视口连续放大字号。 */
 @media(min-width:1550px) {
-  .site-header {
-    padding: 0 48px;
-  }
-  .page-heading {
-    padding-left: 48px;
-    padding-right: 48px;
-    height: 122px;
-  }
   .workspace {
-    margin: 0 40px;
-    grid-template-columns: minmax(0,1fr) 350px;
-    height: calc(100dvh - 264px);
+    grid-template-columns: minmax(0,1fr) 300px;
   }
   .structure-info {
     padding: 25px 25px 18px;
@@ -1531,9 +1540,6 @@ dialog::backdrop {
   .part-facts>div {
     font-size: 11px;
   }
-  .scene {
-    min-height: 660px;
-  }
   .layers-panel {
     top: 350px;
     width: 157px;
@@ -1543,10 +1549,6 @@ dialog::backdrop {
   }
   .layer-name {
     font-size: 12px;
-  }
-  footer {
-    padding-left: 43px;
-    padding-right: 43px;
   }
 }
 
@@ -1570,12 +1572,11 @@ dialog::backdrop {
     display: none;
   }
   .page-heading {
-    padding-left: 24px;
-    padding-right: 24px;
+    padding-left: 20px;
+    padding-right: 20px;
   }
   .workspace {
-    margin: 0 18px;
-    grid-template-columns: minmax(0,1fr) 292px;
+    grid-template-columns: minmax(0,1fr) 264px;
   }
   .scene-title .scene-kind {
     display: none;
@@ -1639,6 +1640,10 @@ dialog::backdrop {
 
 /* 17. 平板改为上下布局：模型在前，信息与剖切区在后，避免三维窗口被压得太窄。 */
 @media(max-width:860px) {
+  #app {
+    height: auto;
+    min-height: 100dvh;
+  }
   .brand-sub {
     display: none;
   }
@@ -1655,24 +1660,18 @@ dialog::backdrop {
   .header-end {
     gap: 0;
   }
-  .site-header {
-    height: 68px;
-  }
-  .page-heading {
-    height: 100px;
-  }
-  .title-secondary,.title-divider {
+  #model-caption {
     display: none;
   }
   .workspace {
     grid-template-columns: minmax(0,1fr);
-    height: auto;
-    min-height: 0;
+    grid-template-rows: auto;
+    flex: none;
   }
   .scene {
-    height: 630px;
+    height: calc(100svh - 136px);
     flex: none;
-    min-height: 0;
+    min-height: 560px;
   }
   .inspector {
     display: grid;
@@ -1739,11 +1738,11 @@ dialog::backdrop {
   }
 }
 
-/* 18. 手机使用固定场景高度、精简顶栏和单列侧栏；图层面板由按钮与 hidden 属性控制。 */
+/* 18. 手机场景高度兼顾视口与宽高比例，使用精简顶栏和单列侧栏；图层面板由按钮与 hidden 属性控制。 */
 @media(max-width:560px) {
   .site-header {
-    height: 62px;
-    padding: 0 16px;
+    height: 52px;
+    padding: 0 12px;
     gap: 10px;
   }
   .brand {
@@ -1781,12 +1780,11 @@ dialog::backdrop {
     display: none;
   }
   .page-heading {
-    height: 94px;
-    padding: 20px 17px;
+    padding: 8px 13px;
     gap: 10px;
   }
   h1 {
-    font-size: 22px;
+    font-size: 14px;
   }
   .eyebrow {
     font-size: 8px;
@@ -1807,10 +1805,11 @@ dialog::backdrop {
     width: 12px;
   }
   .workspace {
-    margin: 0 10px;
+    margin: 0 8px;
   }
   .scene {
-    height: 528px;
+    height: clamp(480px,calc(100svh - 128px),170vw);
+    min-height: 0;
   }
   .scene-top {
     left: 13px;

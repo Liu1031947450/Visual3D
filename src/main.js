@@ -10,7 +10,7 @@ import { marked } from 'marked';
 import { anatomy, drawDiagram } from './content.js';
 import { EyeViewer } from './viewer.js';
 import { loadModel } from './import-model.js';
-import { createEye, eyeAnnotations } from './eye.js';
+import { loadEye, disposeModel, eyeAnnotations } from './eye.js';
 
 // 1. 声明需要的图标。icon()/tool() 只生成占位 HTML，真正的 SVG 由 refreshIcons() 替换。
 // tool 的 id 用来绑定事件，aria-label 提供无障碍名称，data-tooltip 交给 CSS 显示悬浮提示。
@@ -18,6 +18,7 @@ const iconSet = { Eye, Box, ScanLine, Layers3, RotateCcw, Maximize2, Focus, Plus
 const icon = name => `<i data-lucide="${name}"></i>`;
 const tool = (id, symbol, label, extra = '') => `<button id="${id}" class="icon-button" type="button" aria-label="${label}" data-tooltip="${label}" ${extra}>${icon(symbol)}</button>`;
 const app = document.querySelector('#app');
+const eyeURL = `${import.meta.env.BASE_URL}models/eye.glb`;
 /**
  * 2. 先一次性写入页面骨架，再查询元素/创建 Viewer，避免绑定到不存在的 DOM。
  * 模板定位表：
@@ -39,7 +40,7 @@ app.innerHTML = `
   <main>
     <section class="page-heading">
       <div><div class="eyebrow"><span></span> HUMAN EYE ATLAS</div><h1>眼球解剖图谱 <span class="title-divider">/</span> <span class="title-secondary">从表面，看见内部</span></h1></div>
-      <div class="heading-meta"><span class="model-badge">${icon('box')}<span id="model-name">标准眼球模型</span></span><span id="model-caption">程序化解剖示意 · v1.0</span></div>
+      <div class="heading-meta"><span class="model-badge">${icon('box')}<span id="model-name">标准眼球模型</span></span><span id="model-caption">eye.glb · 内置解剖示意</span></div>
     </section>
     <div class="workspace">
       <section class="viewer-column" aria-label="模型工作区">
@@ -94,8 +95,8 @@ function selectPart(id) {
   document.querySelectorAll('[data-part]').forEach(button => { button.classList.toggle('selected', button.dataset.part === id); button.setAttribute('aria-pressed', button.dataset.part === id); });
   document.querySelectorAll('[data-hotspot]').forEach(button => button.classList.toggle('selected', button.dataset.hotspot === id));
   // 固定示意图不是对任意导入文件的截图；导入模型时隐藏，避免错配真实结构。
-  select('.diagram').hidden = !viewer.model.procedural;
-  if (viewer.model.procedural) drawDiagram(select('#anatomy-diagram'), id);
+  select('.diagram').hidden = !viewer.model.builtin;
+  if (viewer.model.builtin) drawDiagram(select('#anatomy-diagram'), id);
 }
 /**
  * 5. 从当前模型重建图层列表；模型替换后必须调用，否则列表还会指向旧对象。
@@ -119,24 +120,40 @@ function renderLayers() {
   select('#layer-count').textContent = String(viewer.model.entries.length).padStart(2, '0');
 }
 // 6. 连接页面与三维层：传入容器、选择回调、统计回调，Viewer 内部负责建场景和渲染循环。
-try {
-  viewer = new EyeViewer(select('#scene'), selectPart, stats => {
-    select('#fps').textContent = `${stats.fps} FPS`;
-    select('#triangles').textContent = `${(stats.triangles / 1000).toFixed(1)}k 三角面`;
-    // 百分数按观察距离估算，仅是 UI 相对缩放值，不是相机焦距或医学测量倍率。
-    select('#zoom-value').textContent = `${Math.round((viewer.container.clientWidth < 600 ? 11.27 : 7.6) / viewer.camera.position.distanceTo(viewer.controls.target) * 100)}%`;
-  });
-  renderLayers(); selectPart('retina');
-  if (matchMedia('(max-width: 560px)').matches) { select('#layers-panel').hidden = true; select('#layers-toggle').setAttribute('aria-pressed', false); }
-  // 仅开发环境暴露调试入口，供控制台和浏览器测试观察；生产构建没有 window.__atlas。
-  if (import.meta.env.DEV) window.__atlas = viewer;
-} catch (error) {
-  // 初始化失败时显示提示并禁用依赖三维对象的控件，文档入口仍保留。
-  select('#viewer-error').hidden = false;
-  select('#viewer-error p').textContent = '无法初始化 WebGL 2。请使用支持硬件加速的现代浏览器。';
-  select('#render-status').textContent = 'WebGL 不可用';
-  document.querySelectorAll('.workspace button:not([data-doc]), .workspace input, #import').forEach(control => { control.disabled = true; });
-  console.error(error);
+async function initializeViewer() {
+  const controls = document.querySelectorAll('.workspace button:not([data-doc]), .workspace input, #import');
+  controls.forEach(control => { control.disabled = true; });
+  const overlay = select('#viewer-error');
+  overlay.hidden = false;
+  select('#viewer-error h2').textContent = '正在加载眼球模型…';
+  select('#viewer-error p').textContent = '读取 eye.glb 中的结构、材质与贴图';
+  select('#viewer-error button').hidden = true;
+  let model;
+  try {
+    model = await loadEye(eyeURL);
+    viewer = new EyeViewer(select('#scene'), model, selectPart, stats => {
+      select('#fps').textContent = `${stats.fps} FPS`;
+      select('#triangles').textContent = `${(stats.triangles / 1000).toFixed(1)}k 三角面`;
+      // 百分数按观察距离估算，仅是 UI 相对缩放值，不是相机焦距或医学测量倍率。
+      select('#zoom-value').textContent = `${Math.round((viewer.container.clientWidth < 600 ? 11.27 : 7.6) / viewer.camera.position.distanceTo(viewer.controls.target) * 100)}%`;
+    });
+    renderLayers(); selectPart('retina');
+    if (matchMedia('(max-width: 560px)').matches) { select('#layers-panel').hidden = true; select('#layers-toggle').setAttribute('aria-pressed', false); }
+    // 仅开发环境暴露调试入口，供控制台和浏览器测试观察；生产构建没有 window.__atlas。
+    if (import.meta.env.DEV) window.__atlas = viewer;
+    controls.forEach(control => { control.disabled = false; });
+    overlay.hidden = true;
+  } catch (error) {
+    // 初始化失败时显示提示并禁用依赖三维对象的控件，文档入口仍保留。
+    if (model && !viewer) disposeModel(model);
+    select('#viewer-error p').textContent = model ? '无法初始化 WebGL 2。请使用支持硬件加速的现代浏览器。' : `无法加载 eye.glb：${error.message}`;
+    select('#render-status').textContent = model ? 'WebGL 不可用' : '模型加载失败';
+    console.error(error);
+  } finally {
+    select('#viewer-error h2').textContent = '三维视图暂不可用';
+    select('#viewer-error button').hidden = false;
+    select('#viewer-error button').disabled = false;
+  }
 }
 /** 7. 页面级模式切换：除 Viewer 状态，还要同步按钮和剖切控件的可用性。 */
 function setMode(mode) {
@@ -206,6 +223,7 @@ select('#import').addEventListener('click', () => select('#model-files').click()
 select('#model-files').addEventListener('change', async event => {
   if (!event.target.files.length || !viewer) return;
   const button = select('#import'); button.disabled = true; button.innerHTML = `${icon('loader-circle')}<span>读取模型</span>`; refreshIcons();
+  select('#restore-demo')?.setAttribute('disabled', '');
   try {
     // 先完整解析成功再替换模型，因此格式/资源校验失败时原来的模型仍在场景中。
     const model = await loadModel(event.target.files);
@@ -222,21 +240,25 @@ select('#model-files').addEventListener('change', async event => {
     model.animations.forEach((animation, index) => { const option = document.createElement('option'); option.value = index; option.textContent = animation.name || `动画 ${index + 1}`; animationSelect.append(option); });
     select('#animation-toggle').innerHTML = `${icon('play')}播放动画`; refreshIcons();
     notify(`已导入 ${model.filename}，${model.entries.length} 个网格，耗时 ${Math.round(model.importMs)} ms`);
-    // 保留一次性的恢复入口，重新生成内置模型并重建图层，不必刷新整个页面。
+    // 保留一次性的恢复入口，重新加载内置 GLB 并重建图层，不必刷新整个页面。
     if (!select('#restore-demo')) {
       const restore = document.createElement('button'); restore.id = 'restore-demo'; restore.className = 'text-button'; restore.textContent = '恢复示意模型';
-      restore.addEventListener('click', () => {
-        viewer.replaceModel(createEye()); renderLayers(); selectPart('retina'); setMode('section');
-        select('#model-name').textContent = '标准眼球模型'; select('#model-caption').textContent = '程序化解剖示意 · v1.0';
-        select('#scene-note-text').textContent = '成人右眼 · 结构示意'; select('[data-mode="exploded"]').disabled = false;
-        select('#animation-panel').hidden = true; select('#opacity').value = 100; select('#opacity-value').value = '100%';
-        select('#wireframe').setAttribute('aria-pressed', false); restore.remove();
+      restore.addEventListener('click', async () => {
+        restore.disabled = true; button.disabled = true;
+        try {
+          viewer.replaceModel(await loadEye(eyeURL)); renderLayers(); selectPart('retina'); setMode('section');
+          select('#model-name').textContent = '标准眼球模型'; select('#model-caption').textContent = 'eye.glb · 内置解剖示意';
+          select('#scene-note-text').textContent = '成人右眼 · 结构示意'; select('[data-mode="exploded"]').disabled = false;
+          select('#animation-panel').hidden = true; select('#opacity').value = 100; select('#opacity-value').value = '100%';
+          select('#wireframe').setAttribute('aria-pressed', false); restore.remove();
+        } catch (error) { notify(`恢复失败：${error.message}`, true); }
+        finally { restore.disabled = false; button.disabled = false; }
       });
       select('.heading-meta').append(restore);
     }
   } catch (error) { notify(`导入失败：${error.message}`, true); }
   // 清空 input.value 使用户修正后能再次选择同名文件；无论成败都恢复导入按钮。
-  finally { button.disabled = false; button.innerHTML = `${icon('upload')}<span>导入模型</span>`; refreshIcons(); event.target.value = ''; }
+  finally { button.disabled = false; select('#restore-demo')?.removeAttribute('disabled'); button.innerHTML = `${icon('upload')}<span>导入模型</span>`; refreshIcons(); event.target.value = ''; }
 });
 
 // 11. 资产动画控制：播放/暂停只切换循环中的推进开关，切换动画则停止旧动作并重置新动作。
@@ -276,3 +298,4 @@ document.querySelectorAll('[data-doc-tab]').forEach(button => button.addEventLis
 select('#close-docs').addEventListener('click', () => select('#docs-dialog').close());
 // 点遮罩时才关闭；通过边界检查区分遮罩与 dialog 自身空白，避免在正文区域误关。
 select('#docs-dialog').addEventListener('click', event => { if (event.target === event.currentTarget) { const bounds = event.currentTarget.getBoundingClientRect(); if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) event.currentTarget.close(); } });
+initializeViewer();

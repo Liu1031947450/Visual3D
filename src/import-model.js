@@ -1,5 +1,5 @@
 /**
- * 本地模型适配层：接收文件选择器的 FileList，解析成与 createEye() 相同的模型结构。
+ * 本地模型适配层：接收文件选择器的 FileList，解析成与 loadEye() 相同的模型结构。
  * validateFiles 只依赖 name/size，可在 Node 单测；loadModel 需要浏览器 File、Blob URL 和图片解码。
  * 这里只解析并返回模型，不删除旧模型、不更新 DOM；成功后由 main.js 调用 replaceModel。
  */
@@ -127,7 +127,7 @@ export async function loadModel(fileList) {
     if (!meshCount) throw new Error('模型中没有可显示的网格。');
     // 7. animationRoot 保留原始加载层级，AnimationMixer 用它查找动画轨道对应的节点。
     // importMs 是热/冷状态均可能影响的本地准备耗时，不是网络首屏指标。
-    return { root, groups, materials, entries, procedural: false, animations, animationRoot: loadedRoot, filename: main.name, importMs: performance.now() - started, bytes: files.reduce((total, file) => total + file.size, 0) };
+    return { root, groups, materials, entries, builtin: false, animations, animationRoot: loadedRoot, filename: main.name, importMs: performance.now() - started, bytes: files.reduce((total, file) => total + file.size, 0) };
   } catch (error) {
     // 8. 尽力清理已经拿到的模型根对象；加载器内部尚未返回的部分资源不在此遍历范围。
     if (loadedRoot) disposeModel({ root: loadedRoot });

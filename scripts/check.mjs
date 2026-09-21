@@ -4,11 +4,22 @@
  * 这里导入 EyeViewer 但不实例化，因此不会执行 constructor 中依赖 document 的代码。
  */
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import validator from 'gltf-validator';
 import * as THREE from 'three';
 import { validateFiles } from '../src/import-model.js';
 import { EyeViewer } from '../src/viewer.js';
 import { anatomy } from '../src/content.js';
 import { eyeAnnotations } from '../src/eye.js';
+
+const eyeFile = await readFile(new URL('../public/models/eye.glb', import.meta.url));
+const validation = await validator.validateBytes(new Uint8Array(eyeFile), { uri: 'eye.glb' });
+assert.equal(validation.issues.numErrors, 0, JSON.stringify(validation.issues.messages));
+const asset = JSON.parse(eyeFile.subarray(20, 20 + eyeFile.readUInt32LE(12)).toString());
+const eyeRoot = asset.nodes.find(node => node.name === 'Eye_Root');
+assert.deepEqual(eyeRoot.children.map(index => asset.nodes[index].name).sort(), anatomy.map(entry => entry.id).sort());
+assert(asset.images.length === 2 && asset.images.every(image => image.bufferView !== undefined && !image.uri), 'eye textures are embedded in the GLB');
+assert(asset.buffers.every(buffer => !buffer.uri), 'eye geometry is embedded in the GLB');
 
 // 1. validateFiles 只读 name/size，用最小对象代替真实 File；这不验证二进制内容是否正确。
 const file = (name, size = 1024) => ({ name, size });
@@ -55,4 +66,4 @@ assert.equal(clipped([1, 1, 1]), false);
 // 6. 完整模式即使保留之前的剖切参数，也不能继续裁掉模型。
 viewer.state.mode = 'whole';
 assert.equal(clipped([2, 2, 2]), false);
-console.log('PASS: file limits, companion files, complete anatomy annotations, clipping intersection/union/disabled axes/offsets/whole mode.');
+console.log('PASS: eye GLB validation, nine groups and embedded textures; file limits, companion files, complete anatomy annotations, clipping intersection/union/disabled axes/offsets/whole mode.');

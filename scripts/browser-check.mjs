@@ -61,10 +61,78 @@ async function checkAnnotations(expectedIds = anatomy.map(entry => entry.id)) {
     assert(!tools.some(tool => overlaps(label, tool)), `${label.id} must not overlap controls`);
   });
 }
+
+async function checkWorkspaceLayout() {
+  const layout = await page.evaluate(() => ({
+    width: innerWidth,
+    height: innerHeight,
+    scrollTop: scrollY,
+    pageWidth: document.documentElement.scrollWidth,
+    pageHeight: document.documentElement.scrollHeight,
+    scene: document.querySelector('#scene').getBoundingClientRect().toJSON(),
+    workspace: document.querySelector('.workspace').getBoundingClientRect().toJSON(),
+    inspector: document.querySelector('.inspector').getBoundingClientRect().toJSON(),
+  }));
+  assert(layout.pageWidth <= layout.width, 'workspace must not overflow horizontally');
+  assert(layout.scene.top + layout.scrollTop <= 104, 'compact headings keep the model near the top');
+  if (layout.width > 860) {
+    assert(layout.pageHeight <= layout.height, 'desktop workspace fits within the viewport');
+    assert(layout.scene.height >= layout.height * 0.75, 'model occupies at least three quarters of desktop height');
+    assert(layout.scene.width >= layout.width * 0.65, 'model remains the primary desktop column');
+    assert(layout.inspector.bottom <= layout.workspace.bottom, 'inspector scrolls within the workspace');
+  } else {
+    assert(layout.scene.height >= Math.min(540, layout.height - 128), 'small screens retain a large model area');
+  }
+}
+
 try {
   // 2. 等待 Viewer 真正完成统计采样，检查标题、非空画布并保存桌面截图和渲染设备信息。
-  await page.goto(baseURL);
+  const eyeResponse = page.waitForResponse(response => new URL(response.url()).pathname.endsWith('/models/eye.glb'));
+  let releaseModel;
+  const modelReady = new Promise(resolve => { releaseModel = resolve; });
+  await page.route('**/models/eye.glb', async route => { await modelReady; await route.continue(); });
+  await page.goto(baseURL, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#viewer-error:not([hidden])');
+  assert.equal(await page.locator('#import').isDisabled(), true, 'model controls stay disabled while loading');
+  await page.locator('[data-doc="export"]').first().click();
+  await page.waitForSelector('#document-content h1');
+  await page.locator('#close-docs').click();
+  releaseModel();
+  assert.equal((await eyeResponse).status(), 200, 'default model is loaded from eye.glb');
+  await page.unroute('**/models/eye.glb');
   await page.waitForFunction(() => Boolean(window.__atlas?.stats));
+  assert.equal(await page.evaluate(() => window.__atlas.model.filename), 'eye.glb');
+  assert.equal(await page.evaluate(() => performance.getEntriesByType('resource').some(entry => entry.name.includes('/scripts/eye-source.js'))), false, 'runtime does not load the model generator');
+  const parity = await page.evaluate(async () => {
+    const { createEye } = await import('/scripts/eye-source.js');
+    const { disposeModel } = await import('/src/eye.js');
+    const viewer = window.__atlas;
+    const loaded = viewer.model;
+    const generated = createEye();
+    const canvas = document.createElement('canvas'); canvas.width = canvas.height = 160;
+    const context = canvas.getContext('2d');
+    const sample = () => {
+      viewer.renderer.render(viewer.scene, viewer.camera);
+      context.drawImage(viewer.renderer.domElement, 0, 0, 160, 160);
+      return context.getImageData(0, 0, 160, 160).data;
+    };
+    const actual = sample();
+    try {
+      viewer.scene.remove(loaded.root); viewer.model = generated; viewer.scene.add(generated.root);
+      viewer.applyClipping(); viewer.select('retina');
+      const expected = sample();
+      let difference = 0;
+      for (let index = 0; index < actual.length; index += 1) difference += Math.abs(actual[index] - expected[index]);
+      return { meanPixelDifference: difference / actual.length, materials: loaded.materials.length, expectedMaterials: generated.materials.length };
+    } finally {
+      viewer.scene.remove(generated.root); viewer.model = loaded; viewer.scene.add(loaded.root);
+      disposeModel(generated);
+    }
+  });
+  assert(parity.meanPixelDifference < 1, `GLB preserves the generated appearance: ${JSON.stringify(parity)}`);
+  assert.equal(parity.materials, parity.expectedMaterials);
+  report.eyeGLB = parity;
+  await checkWorkspaceLayout();
   assert.match(await page.title(), /OCULUS/);
   const first = await pixels(); assert(first.colored > 300, '3D model must have a substantial nonblank region');
   report.initial = await page.evaluate(() => {
@@ -258,11 +326,20 @@ try {
 
   // 11. 恢复示意模型，用移动视口检查非空画布、无横向溢出和图层选择。
   // 改视口不是实体手机测试，不证明 iOS/Android GPU 性能或完整触摸手势兼容。
+  await page.route('**/models/eye.glb', route => route.fulfill({ status: 404, body: 'Missing eye GLB' }));
   await page.locator('#restore-demo').click();
+  await page.waitForFunction(() => document.querySelector('#toast').textContent.includes('恢复失败'));
+  assert.equal(await page.locator('#model-name').textContent(), previousName, 'failed restoration preserves the imported model');
+  assert.equal(await page.locator('#restore-demo').isEnabled(), true);
+  assert.equal(await page.locator('#import').isEnabled(), true);
+  await page.unroute('**/models/eye.glb');
+  await page.locator('#restore-demo').click();
+  await page.waitForFunction(() => window.__atlas.model.builtin && !document.querySelector('#restore-demo'));
   await page.locator('#home').click();
   await checkAnnotations();
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload(); await page.waitForFunction(() => Boolean(window.__atlas?.stats));
+  await checkWorkspaceLayout();
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'mobile must not overflow horizontally');
   assert((await pixels()).colored > 120, 'mobile 3D model must be visible');
   await checkAnnotations();
@@ -273,10 +350,11 @@ try {
   assert.equal(await page.locator('#part-name').textContent(), '晶状体');
   await checkAnnotations();
   await page.locator('#layers-toggle').click();
-  for (const width of [320, 360, 768, 1280]) {
-    await page.setViewportSize({ width, height: 900 });
+  for (const [width, height] of [[320, 900], [360, 900], [768, 900], [1280, 900], [1366, 768], [1920, 934]]) {
+    await page.setViewportSize({ width, height });
     await page.locator('#home').click();
     await checkAnnotations();
+    await checkWorkspaceLayout();
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `no overflow at ${width}px`);
     await page.locator('#layers-toggle').click();
     await checkAnnotations();
@@ -292,9 +370,25 @@ try {
     await checkAnnotations(inView);
     await page.locator('#layers-toggle').click();
   }
+  const failedPage = await browser.newPage();
+  failedPage.on('pageerror', error => errors.push(error.message));
+  for (const failure of [{ status: 404, body: 'Missing eye GLB' }, { status: 200, body: Buffer.from(fixtures.glb[0].base64, 'base64') }]) {
+    await failedPage.route('**/models/eye.glb', route => route.fulfill(failure));
+    await failedPage.goto(baseURL);
+    await failedPage.waitForFunction(() => document.querySelector('#render-status').textContent === '模型加载失败');
+    assert.match(await failedPage.locator('#viewer-error p').textContent(), /无法加载 eye\.glb/);
+    assert.equal(await failedPage.locator('#viewer-error button').isEnabled(), true, 'reload stays available on failure');
+    assert.equal(await failedPage.locator('#import').isDisabled(), true);
+    assert.equal(await failedPage.evaluate(() => Boolean(window.__atlas)), false, 'no procedural fallback on load failure');
+    await failedPage.locator('[data-doc="export"]').first().click();
+    await failedPage.waitForSelector('#document-content h1');
+    await failedPage.unroute('**/models/eye.glb');
+  }
+  await failedPage.close();
   // 12. 汇总前确认无未捕获 pageerror；主动测试坏文件时出现的预期 Loader 错误日志不等同于 pageerror。
   assert.deepEqual(errors, [], 'no uncaught browser errors');
-  report.checks = ['desktop/mobile nonblank pixels', 'all nine annotations, selection, nonoverlapping layout and visibility rules', 'clipping intersection/union/offsets', 'layer visibility and selection', 'opacity', 'exploded view', 'orbit/pan/zoom/rotation', 'PNG download', 'all three documents', 'GLB embedded texture and animation', 'glTF external bin and texture', 'OBJ+MTL texture', 'failed import preserves model', 'missing materials/textures and remote references rejected', 'responsive widths 320/360/390/768/1280/1440'];
+  report.checks = ['desktop/mobile nonblank pixels', 'all nine annotations, selection, nonoverlapping layout and visibility rules', 'clipping intersection/union/offsets', 'layer visibility and selection', 'opacity', 'exploded view', 'orbit/pan/zoom/rotation', 'PNG download', 'all three documents', 'GLB embedded texture and animation', 'glTF external bin and texture', 'OBJ+MTL texture', 'failed import preserves model', 'missing materials/textures and remote references rejected', 'viewport-filling desktop layout and compact headings', 'responsive widths 320/360/390/768/1280/1366/1440/1920'];
+  report.checks.push('default GLB request and generated appearance parity', 'loading controls and document availability', 'GLB restoration and failure preservation', 'missing/invalid default GLB errors without procedural fallback');
   await writeFile('test-results/verification.json', JSON.stringify(report, null, 2));
   console.log(JSON.stringify(report, null, 2));
 // 无论哪一条断言失败都关闭本次创建的浏览器；开发服务器由调用者管理，不在这里关闭。

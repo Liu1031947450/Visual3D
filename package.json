@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
     "test": "node scripts/check.mjs",
+    "export:eye": "node scripts/export-eye.mjs",
     "test:browser": "node scripts/browser-check.mjs",
     "test:deploy": "node scripts/deploy-check.mjs"
   },

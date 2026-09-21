@@ -1,6 +1,6 @@
 # OCULUS · 眼球解剖图谱
 
-基于 Three.js 的分层眼球展示，核心交互参照 `webgl_clipping_intersection`。Vite + JavaScript，无后端。
+基于 Three.js 的分层眼球展示，默认加载 `public/models/eye.glb`，核心交互参照 `webgl_clipping_intersection`。Vite + JavaScript，无后端。
 
 ## 新手从哪里开始
 
@@ -37,6 +37,15 @@ npm run dev -- --host 127.0.0.1 --port 5188 --strictPort
 
 三份文档也可以在网站内阅读和下载。
 
+## 默认眼球 GLB
+
+- 资产文件：`public/models/eye.glb`，包含当前眼球的九个组织分组、16 个材质和两张内嵌贴图。
+- 加载链路：`src/main.js` 的 `initializeViewer()` → `src/eye.js` 的 `loadEye()` → `GLTFLoader` → `EyeViewer`。页面启动和“恢复示意模型”均读取 GLB，不再现场生成眼球。
+- 生成器保留在 `scripts/eye-source.js`，仅供开发时执行 `npm run export:eye` 重新导出；该命令会覆盖 `public/models/eye.glb`，不要用它覆盖后续收到的专业模型。需要系统 Chrome，或设置 `BROWSER_CHANNEL=chromium` 使用已安装的 Playwright Chromium。
+- 后续与建模人员沟通：交付未压缩 GLB，贴图内嵌，九个组织独立分组。普通文件可以用“导入模型”预览；直接替换默认 GLB 还必须符合[默认资产对接约定](public/docs/3D模型数据导出规范.md#默认资产对接约定)，不能只更改扩展名或文件名。
+
+GLB 加载失败会显示错误及重新加载入口，不会悄悄回退到程序生成模型；文档入口仍可用。
+
 ## 验证与构建
 
 ```bash
@@ -51,7 +60,7 @@ npm run preview -- --port 4188
 
 ## 重要边界
 
-内置眼球由程序生成，纹理与示意图均在本地绘制，无第三方模型授权负担，但没有经过医学审核。结构厚度、血管和光学效果为示意。剖切不生成实体封口；未配置 Draco/Meshopt/KTX2 解码器；没有运行时 LOD。外部模型不启用内置分层展开。不能用于临床诊断或精密测量。
+内置眼球由原程序化模型预先导出为 GLB，页面加载文件；二维示意图仍在本地绘制。无第三方模型授权负担，但没有经过医学审核。结构厚度、血管和光学效果为示意。剖切不生成实体封口；未配置 Draco/Meshopt/KTX2 解码器；没有运行时 LOD。外部模型不启用内置分层展开。不能用于临床诊断或精密测量。
 
 ## 部署
 

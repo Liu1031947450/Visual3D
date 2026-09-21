@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { createEye, disposeModel, eyeAnnotations } from './eye.js';
+import { disposeModel, eyeAnnotations } from './eye.js';
 
 export class EyeViewer {
   /**
@@ -14,7 +14,7 @@ export class EyeViewer {
    * @param {Function} onSelect 接收结构 id，由 main.js 的 selectPart 更新图文。
    * @param {Function} onStats 接收 { fps, triangles, calls }，每个统计周期更新状态栏。
    */
-  constructor(container, onSelect, onStats) {
+  constructor(container, model, onSelect, onStats) {
     this.container = container;
     this.onSelect = onSelect;
 
@@ -86,7 +86,7 @@ export class EyeViewer {
     this.state = { mode: 'section', intersection: true, axes: [true, true, true], helpers: false, labels: true, wireframe: false, opacity: 1 };
     this.raycaster = new THREE.Raycaster();
     this.pointer = new THREE.Vector2();
-    this.model = createEye();
+    this.model = model;
     this.scene.add(this.model.root);
 
     // 克隆各组初始位置，切换展开模式时始终从基准位置计算，避免重复点击导致偏移累加。
@@ -225,7 +225,7 @@ export class EyeViewer {
     const directions = { sclera: [0, 0, -0.75], choroid: [0, 0, -0.25], retina: [0, 0, 0.2], cornea: [0, 0, 2.05], iris: [0, 0, 1.6], ciliary: [0, 0, 0.65], lens: [0, 0, 1], vitreous: [0, 0, 0.25], nerve: [0, 0, -1.05] };
     this.model.groups.forEach((group, id) => {
       group.position.copy(this.basePositions.get(id));
-      if (mode === 'exploded' && this.model.procedural) group.position.add(new THREE.Vector3(...directions[id]));
+      if (mode === 'exploded' && this.model.builtin) group.position.add(new THREE.Vector3(...directions[id]));
     });
     this.applyClipping();
     if (mode === 'exploded') { this.resetCamera(); this.zoom(1.25); }
@@ -287,7 +287,7 @@ export class EyeViewer {
       const position = world.clone().project(this.camera);
       // 锚点离开视锥或被剖切时隐藏；仅接近画布边缘不再隐藏，标签会被限制在画布内。
       // 未做其他网格遮挡检测；完整模式下可用标注选择内部结构。
-      const visible = this.state.labels && this.model.procedural && group?.visible && !this.isClipped(world) && position.z >= -1 && position.z <= 1 && Math.abs(position.x) <= 1 && Math.abs(position.y) <= 1;
+      const visible = this.state.labels && this.model.builtin && group?.visible && !this.isClipped(world) && position.z >= -1 && position.z <= 1 && Math.abs(position.x) <= 1 && Math.abs(position.y) <= 1;
       element.hidden = !visible;
       if (visible) projected.push({ ...annotation, anchorX: (position.x * 0.5 + 0.5) * width, anchorY: (-position.y * 0.5 + 0.5) * height });
     });
@@ -329,7 +329,7 @@ export class EyeViewer {
   }
 
   /**
-   * 接收 createEye()/loadModel() 统一返回的模型对象；调用者必须先确认新模型加载成功。
+   * 接收 loadEye()/loadModel() 统一返回的模型对象；调用者必须先确认新模型加载成功。
    * 清旧动作和旧模型资源 -> 装入新模型 -> 记录基准位置 -> 准备动画 -> 恢复默认观察方式。
    * 页面图层列表由 main.js 重建；切面常量、启用轴等设置没有在此重置。
    */
