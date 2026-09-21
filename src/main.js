@@ -32,7 +32,7 @@ const app = document.querySelector('#app');
  */
 app.innerHTML = `
   <header class="site-header">
-    <a class="brand" href="/" aria-label="OCULUS 首页"><span class="brand-mark">${icon('eye')}</span><span>OCULUS<span class="brand-sub">解剖视界</span></span></a>
+    <a class="brand" href="${import.meta.env.BASE_URL}" aria-label="OCULUS 首页"><span class="brand-mark">${icon('eye')}</span><span>OCULUS<span class="brand-sub">解剖视界</span></span></a>
     <nav aria-label="主导航"><button class="nav-item active" data-nav="explore">三维探索</button><button class="nav-item" data-doc="export">模型数据规范</button><button class="nav-item" data-doc="collaboration">协作与验证</button></nav>
     <div class="header-end"><span class="version">EXPERIMENTAL · 01</span><button class="button import-button" id="import">${icon('upload')}<span>导入模型</span></button></div>
   </header>
@@ -242,8 +242,8 @@ select('#model-files').addEventListener('change', async event => {
 // 11. 资产动画控制：播放/暂停只切换循环中的推进开关，切换动画则停止旧动作并重置新动作。
 select('#animation-toggle').addEventListener('click', event => { viewer.animationPlaying = !viewer.animationPlaying; event.currentTarget.innerHTML = `${icon(viewer.animationPlaying ? 'pause' : 'play')}${viewer.animationPlaying ? '暂停动画' : '播放动画'}`; refreshIcons(); });
 select('#animation-select').addEventListener('change', event => { viewer.mixer.stopAllAction(); viewer.mixer.clipAction(viewer.model.animations[Number(event.target.value)]).reset().play(); });
-// 12. 文档从 public/docs 映射到 /docs 请求；这是静态文件，不是后端 API。
-const documents = { export: '/docs/3D模型数据导出规范.md', collaboration: '/docs/建模需求与协作流程.md', report: '/docs/技术验证报告.md' };
+// 12. 文档是 public/docs 内的静态文件；BASE_URL 让本地根路径和 GitHub Pages 子目录都能访问。
+const documents = { export: `${import.meta.env.BASE_URL}docs/3D模型数据导出规范.md`, collaboration: `${import.meta.env.BASE_URL}docs/建模需求与协作流程.md`, report: `${import.meta.env.BASE_URL}docs/技术验证报告.md` };
 // 用浏览器原生 details/summary 包裹已存在的详情，默认折叠，节省侧栏空间。
 const details = document.createElement('details');
 details.className = 'part-details';

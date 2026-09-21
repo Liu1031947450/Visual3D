@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
     "test": "node scripts/check.mjs",
-    "test:browser": "node scripts/browser-check.mjs"
+    "test:browser": "node scripts/browser-check.mjs",
+    "test:deploy": "node scripts/deploy-check.mjs"
   },
   "dependencies": {
     "lucide": "^1.47.0",

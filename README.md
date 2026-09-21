@@ -55,6 +55,25 @@ npm run preview -- --port 4188
 
 ## 部署
 
+### GitHub Pages
+
+在线地址：<https://liu1031947450.github.io/Visual3D/>。
+
+`.github/workflows/deploy.yml` 在推送 `main` 后自动安装依赖、检查、构建并发布 `dist/`。首次需要在仓库 **Settings → Pages → Source** 选择 **GitHub Actions**。也可在 **Actions → Deploy GitHub Pages → Run workflow** 手动重新部署。
+
+工作流根据 Pages 的实际路径设置 Vite `base`；首页链接和文档请求使用 `import.meta.env.BASE_URL`，因此不会误请求站点根目录。无需配置个人 Token 或上传 `node_modules/`。
+
+本地模拟 GitHub Pages 的子目录部署：
+
+```bash
+npm run build -- --base=/Visual3D/
+npm run test:deploy
+```
+
+测试脚本会自行启动/关闭预览服务，检查桌面/手机的模型像素、九个标注、文档和首页跳转。需要系统 Chrome；CI 使用 Playwright Chromium。`BASE_URL=https://liu1031947450.github.io/Visual3D/ npm run test:deploy` 可检查真实线上站点。
+
+### 其他静态托管
+
 `npm run build` 的 `dist/` 可部署到静态托管。字体默认请求 Google Fonts，网络受限时回退到系统字体；正式内网部署可自托管字体。
 
-如部署到 Vercel，强烈建议先安装 CLI：`npm i -g vercel`，以便使用 `vercel deploy`、`vercel logs` 和后续需要时的 `vercel env pull`。当前项目无需环境变量；本次仅本地运行，未创建 Vercel 项目或执行部署。
+如另需部署到 Vercel，强烈建议先安装 CLI：`npm i -g vercel`，以便使用 `vercel deploy`、`vercel logs` 和后续需要时的 `vercel env pull`。当前项目无需环境变量，未创建 Vercel 项目。
