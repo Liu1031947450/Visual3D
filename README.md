@@ -4,11 +4,11 @@
 
 ## 新手从哪里开始
 
-先阅读 [项目结构与新手入门](public/docs/项目结构与新手入门.md)，其中按“需要什么 → 做什么 → 得到什么”解释启动、渲染、剖切、图文联动和文件导入，并提供调试练习、修改定位表和验证步骤。
+先阅读 [从零读懂 OCULUS：Three.js 与眼球模型图文教程](public/docs/项目结构与新手入门.md)。教程以真实运行截图、源码截图和本地 SVG 示意图串起“第一帧 → 模型与材质 → 剖切与拾取 → 标注 → 导入与动画 → 资源释放 → 离线建模”，覆盖全部自有源码与脚本，并提供可运行的小场景和分阶段练习。
 
 推荐顺序：`package.json` → `index.html` → `src/main.js` 中的 `new EyeViewer` → `src/viewer.js` 的构造函数与渲染循环 → `src/eye.js` / `src/content.js` → `src/import-model.js` → 测试脚本。
 
-源码已补充分步中文注释，CSS 已按规则和属性换行；无需先读完全部 HTML 模板和几何参数。`package.json` 不支持注释，其字段和命令在入门文档中解释。不要从 `node_modules/`、`dist/` 或测试生成资产开始分析业务代码。
+教程重点是 Three.js 和模型操作，HTML/CSS 仅简述。使用编辑器 Markdown 预览或仓库页面阅读；图片位于 `public/docs/assets/tutorial/`，无需图表插件，也未增加网站内的文档标签页。源码已有中文注释，不必先读完 HTML 模板和所有几何参数；不要从 `node_modules/`、`dist/` 或测试产物开始分析业务代码。
 
 ## 运行
 
